@@ -1,0 +1,20 @@
+/target/
+/.cargo/
+/agents/tools/huggingface/Cargo.lock
+.env
+.env.*
+.DS_Store
+**/*.rs.bk
+
+# Model bytes and generated execution data are not source code.
+gyms/*/model/weights/
+gyms/*/runtime/logs/
+gyms/*/runtime/traces/
+gyms/*/runtime/artifacts/
+gyms/*/runtime/operations/
+gyms/*/runtime/supervisor.json
+gyms/*/runtime/control.sock
+gyms/*/engine/worktrees/
+
+# Nested Git worktrees contain administrative files of their own.
+**/.git
