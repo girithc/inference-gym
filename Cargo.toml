@@ -1,8 +1,0 @@
-[workspace]
-members = ["agents/tools/huggingface"]
-default-members = ["agents/tools/huggingface"]
-resolver = "3"
-
-[profile.release]
-lto = "thin"
-strip = "debuginfo"

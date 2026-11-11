@@ -1,0 +1,15 @@
+{
+  "name": "gym",
+  "private": true,
+  "type": "module",
+  "workspaces": ["agent", "gym"],
+  "scripts": {
+    "gym": "bun gym/src/cli.ts",
+    "setup": "bun gym/src/cli.ts setup",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
