@@ -31,6 +31,20 @@ function buildSystemPrompt(inst: Instance): string {
   ].join("\n");
 }
 
+/** True when the working tree differs from the baseline commit inside the task's allowed paths. */
+async function hasAllowedPathChanges(inst: Instance): Promise<boolean> {
+  const r = await exec(
+    "git",
+    ["--no-pager", "diff", "--stat", inst.baseline.commit, "--", ...inst.task.allowedPaths],
+    { cwd: inst.dir, timeoutMs: 60_000 },
+  );
+  return r.stdout.trim().length > 0;
+}
+
+function isImprovement(inst: Instance, tg: number, kernelChanges: boolean): boolean {
+  return kernelChanges && tg >= inst.baseline.tg * (1 + inst.task.minTgGainPct / 100);
+}
+
 function makeEvalTool(inst: Instance): Tool {
   return {
     name: "eval",
@@ -39,6 +53,7 @@ function makeEvalTool(inst: Instance): Tool {
     async execute() {
       const result = await evaluate(inst.dir, inst.task, { baselineText: inst.baseline.correctnessText });
       await saveResults(inst.dir, result, "agent");
+      const kernelChanges = await hasAllowedPathChanges(inst);
       const tgDelta = ((result.bench.tg / inst.baseline.tg - 1) * 100).toFixed(2);
       return {
         ok: result.pass,
@@ -50,7 +65,8 @@ function makeEvalTool(inst: Instance): Tool {
             correctness_passed: result.correctness.passed,
             correctness_similarity: Number(result.correctness.similarity.toFixed(3)),
             pass: result.pass,
-            improved: result.pass && result.bench.tg > inst.baseline.tg * 1.02,
+            kernel_changed: kernelChanges,
+            improved: result.pass && isImprovement(inst, result.bench.tg, kernelChanges),
           },
           null,
           2,
@@ -112,7 +128,11 @@ export async function runInstance(name: string, opts: { maxSteps?: number } = {}
   console.log("[gym] final verification eval ...");
   const final = await evaluate(inst.dir, inst.task, { baselineText: inst.baseline.correctnessText });
   await saveResults(inst.dir, final, "final");
-  const improved = final.pass && final.bench.tg > inst.baseline.tg * 1.02;
+  const kernelChanges = await hasAllowedPathChanges(inst);
+  const improved = final.pass && isImprovement(inst, final.bench.tg, kernelChanges);
+  if (!kernelChanges) {
+    console.log("[gym] note: no edits in allowed paths since baseline — a run without kernel changes cannot count as an improvement");
+  }
 
   await exec("git", ["add", "-A"], { cwd: inst.dir, timeoutMs: 60_000 });
   const msg = `gym: ${improved ? "improvement" : "result"} tg=${final.bench.tg.toFixed(2)} t/s (baseline ${inst.baseline.tg.toFixed(2)}, pass=${final.pass})`;

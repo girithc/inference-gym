@@ -8,6 +8,11 @@ export type Task = {
   allowedPaths: string[];
   bench: { pp: number; tg: number; reps: number };
   correctness: { prompt: string; nPredict: number; minSimilarity: number };
+  /**
+   * Minimum tg gain (percent vs baseline) that counts as an improvement.
+   * Must sit above run-to-run Metal measurement noise (~2-3% at tg128 with 3 reps).
+   */
+  minTgGainPct: number;
 };
 
 export const metalKernelTask: Task = {
@@ -15,6 +20,7 @@ export const metalKernelTask: Task = {
   title: "Optimize llama.cpp Metal kernels for token generation",
   allowedPaths: ["ggml/src/ggml-metal/ggml-metal.metal", "ggml/src/ggml-metal/ggml-metal-impl.h"],
   bench: { pp: 512, tg: 128, reps: 3 },
+  minTgGainPct: 5,
   correctness: {
     prompt: "The theory of relativity states",
     nPredict: 96,

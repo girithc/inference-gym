@@ -55,7 +55,13 @@ The agent may edit only the Metal kernel sources of llama.cpp (`ggml-metal.metal
 - **Throughput**: `llama-bench -p 512 -n 128 -r 3` → tg128 tokens/s (and pp512 for reference). For small models, decode is memory-bandwidth bound and dominated by matrix-vector kernels.
 - **Correctness gate**: greedy, seeded completion of a fixed prompt through the freshly built `llama-server` must stay similar (word-Jaccard ≥ 0.8) to the baseline generation. A kernel change that breaks outputs cannot win, no matter how fast it is.
 
-A run only counts as an **improvement** when correctness passes **and** tg ≥ baseline × 1.02.
+A run only counts as an **improvement** when all three hold:
+
+1. the agent actually edited files in the task's allowed paths (diff vs the baseline commit is non-empty),
+2. the correctness gate passes, and
+3. tg improved by ≥ 5% over baseline — above the ~2-4% run-to-run noise of `llama-bench` on Metal (measured: identical code scored 196.73 → 201.68 → 204.44 t/s across runs).
+
+Everything else is recorded in `.gym/history.jsonl` for comparison, but not celebrated as a win.
 
 ## Quickstart (macOS, Apple Silicon)
 
@@ -82,10 +88,22 @@ To inspect or continue an instance's work yourself:
 
 ```bash
 cd instances/demo
-git log --oneline          # baseline → agent commits → results
+git log --oneline          # seed → baseline → agent commits → results
 git diff <baseline-sha>    # exactly what the agent changed
 bun run gym eval demo      # re-verify any time
 ```
+
+### Verified on this machine (Apple M1 Max, macOS 27, llama.cpp @ f3b407c)
+
+```
+[gym] backends: MTL,BLAS on Apple M1 Max
+[gym] smoke: pp128=4602.67 t/s  tg64=200.30 t/s
+instance 'demo': baseline tg128=196.73 t/s, pp512=5739.12 t/s
+correctness gate: PASS (similarity 1.000 on unchanged code)
+`gym run demo` end-to-end: agent loop, eval tool, result commits, trajectory log all exercised
+```
+
+Honest note: Qwen2.5-0.5B — the default brain served by `gym serve` — is smart enough to attempt actions but routinely breaks the output protocol after a few steps, so the loop stops early (by design: the gym records this in the trajectory, which is exactly what "testing your LLM" means). Point `GYM_LLM_*` at a stronger model for real optimization sessions; nothing else changes.
 
 ## Using a different (smarter) brain
 
