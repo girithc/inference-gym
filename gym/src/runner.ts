@@ -77,14 +77,17 @@ function makeEvalTool(inst: Instance): Tool {
 }
 
 async function assertLlmReachable(): Promise<void> {
-  const { baseUrl } = llmConfig();
-  const origin = new URL(baseUrl).origin;
+  const cfg = llmConfig();
+  if (!cfg.apiKey) {
+    throw new Error(
+      "no API key for the agent brain: export MODEL_API_KEY=<key from the Meta Model API dashboard> (or set GYM_LLM_API_KEY / GYM_LLM_BASE_URL to use a different OpenAI-compatible endpoint)",
+    );
+  }
+  const origin = new URL(cfg.baseUrl).origin;
   try {
     await fetch(`${origin}/health`, { signal: AbortSignal.timeout(5_000) });
   } catch {
-    throw new Error(
-      `no LLM reachable at ${origin}. Start the local one with \`bun run gym serve\`, or point GYM_LLM_BASE_URL at any OpenAI-compatible endpoint.`,
-    );
+    throw new Error(`agent brain not reachable at ${origin}. Check GYM_LLM_BASE_URL or your network.`);
   }
 }
 
@@ -100,7 +103,7 @@ export async function runInstance(name: string, opts: { maxSteps?: number } = {}
   const inst = await loadInstance(name);
   await assertLlmReachable();
 
-  const llm = new OpenAICompatLLM({ ...llmConfig(), maxTokens: 1024, temperature: 0.3 });
+  const llm = new OpenAICompatLLM({ ...llmConfig() });
   const tools: Tool[] = [...makeToolkit(inst.dir), makeEvalTool(inst)];
   const maxSteps = opts.maxSteps ?? defaultMaxSteps();
 

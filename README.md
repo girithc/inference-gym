@@ -71,18 +71,20 @@ bun install
 # 1. one-time: clone + build llama.cpp with Metal, download Qwen2.5-0.5B, smoke bench
 bun run gym setup
 
-# 2. start the agent's brain (local llama-server, OpenAI-compatible API)
-bun run gym serve          # leave running; Ctrl+C to stop
+# 2. get a key from the Meta Model API dashboard and export it (the agent's brain)
+export MODEL_API_KEY=...        # https://dev.meta.ai — Muse Spark on Meta Model API
 
-# 3. in a second terminal: create an instance (builds + measures baseline, commits it)
+# 3. create an instance (builds + measures baseline, commits it)
 bun run gym new demo
 
-# 4. let the agent loose (edit kernels → eval → commit loop)
+# 4. let the agent optimize (edit kernels → eval → commit loop)
 bun run gym run demo
 
 # 5. compare instances / scores
 bun run gym list
 ```
+
+Default brain: Meta Model API (`https://api.meta.ai/v1`), model `muse-spark-1.3-contributor`, reasoning effort `high`. To run the brain locally instead (no key needed), start a llama-server with `bun run gym serve` and set `GYM_LLM_BASE_URL=http://127.0.0.1:8080/v1 GYM_LLM_MODEL=local`.
 
 To inspect or continue an instance's work yourself:
 
@@ -103,28 +105,34 @@ correctness gate: PASS (similarity 1.000 on unchanged code)
 `gym run demo` end-to-end: agent loop, eval tool, result commits, trajectory log all exercised
 ```
 
-Honest note: Qwen2.5-0.5B — the default brain served by `gym serve` — is smart enough to attempt actions but routinely breaks the output protocol after a few steps, so the loop stops early (by design: the gym records this in the trajectory, which is exactly what "testing your LLM" means). Point `GYM_LLM_*` at a stronger model for real optimization sessions; nothing else changes.
+Honest note: the local Qwen2.5-0.5B fallback (served by `gym serve`) is smart enough to attempt actions but routinely breaks the output protocol after a few steps, so the loop stops early (by design: the gym records this in the trajectory, which is exactly what "testing your LLM" means). The default `muse-spark-1.3-contributor` brain is the one expected to hold the protocol across a full optimization session.
 
-## Using a different (smarter) brain
+## Brains: switching the LLM being tested
 
-The small local model works end-to-end but is a weak optimizer — the point of the gym is to test LLMs, so point the framework anywhere OpenAI-compatible:
+The agent brain is just an OpenAI-compatible endpoint — the whole point of the gym is to test LLMs, so swap it with three env vars:
 
 ```bash
-GYM_LLM_BASE_URL=https://api.openai.com/v1 \
-GYM_LLM_API_KEY=sk-... \
-GYM_LLM_MODEL=gpt-4.1-mini \
-bun run gym run demo
+# OpenAI
+GYM_LLM_BASE_URL=https://api.openai.com/v1 GYM_LLM_API_KEY=sk-... GYM_LLM_MODEL=gpt-4.1-mini \
+  bun run gym run demo
+
+# local model served by `gym serve` (fallback, no key needed)
+GYM_LLM_BASE_URL=http://127.0.0.1:8080/v1 GYM_LLM_MODEL=local bun run gym run demo
 ```
 
-Defaults: `http://127.0.0.1:8080/v1` / model `local` (what `gym serve` runs).
+Defaults: `https://api.meta.ai/v1` / `muse-spark-1.3-contributor` / key from `MODEL_API_KEY`.
 
 ## Environment
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `GYM_LLM_BASE_URL` | `http://127.0.0.1:8080/v1` | agent brain endpoint |
-| `GYM_LLM_API_KEY` | `local` | bearer token |
-| `GYM_LLM_MODEL` | `local` | model id sent to the endpoint |
+| `MODEL_API_KEY` | — | Meta Model API key (default brain) |
+| `GYM_LLM_BASE_URL` | `https://api.meta.ai/v1` | agent brain endpoint (OpenAI-compatible) |
+| `GYM_LLM_API_KEY` | — | overrides `MODEL_API_KEY` |
+| `GYM_LLM_MODEL` | `muse-spark-1.3-contributor` | model id sent to the endpoint |
+| `GYM_LLM_REASONING_EFFORT` | `high` | reasoning effort for Meta reasoning models |
+| `GYM_LLM_MAX_TOKENS` | `4096` | max completion tokens per agent step |
+| `GYM_LLM_TEMPERATURE` | unset | sampling temperature (reasoning models may reject it) |
 | `GYM_LLM_PORT` | `8080` | port for `gym serve` |
 | `GYM_MAX_STEPS` | `24` | agent action budget per run |
 | `GYM_MODEL` | `cache/models/qwen2.5-0.5b-instruct-q4_k_m.gguf` | benchmark model |

@@ -44,6 +44,8 @@ export type LLMOptions = {
   maxRetries?: number;
   maxTokens?: number;
   temperature?: number;
+  /** Sent as `reasoning_effort` (e.g. "minimal".."max" on Meta reasoning models) when set. */
+  reasoningEffort?: string;
 };
 
 export interface LLMClient {

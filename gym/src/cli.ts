@@ -12,7 +12,7 @@ const USAGE = `gym - a gym where AI agents optimize GPU kernels for llama.cpp in
 usage: bun run gym <command> [args]
 
   setup              clone + build llama.cpp (Metal), download the model, run a smoke bench
-  serve              start the local LLM server used as the agent's brain (Ctrl+C to stop)
+  serve              start a local llama-server as a fallback agent brain (Ctrl+C to stop)
   new <name>         create an instance: copy llama.cpp, git-seed, build, measure baseline
   run <name> [steps] run the agent loop in the instance (edit kernels, eval, commit)
   eval <name>        rebuild + benchmark + correctness check for the instance, as-is
@@ -21,9 +21,13 @@ usage: bun run gym <command> [args]
   help               this text
 
 environment:
-  GYM_LLM_BASE_URL   OpenAI-compatible base URL for the agent brain (default http://127.0.0.1:8080/v1)
-  GYM_LLM_API_KEY    API key for that endpoint (default: local)
-  GYM_LLM_MODEL      model id to send (default: local)
+  MODEL_API_KEY      Meta Model API key (the default agent brain)
+  GYM_LLM_BASE_URL   agent brain endpoint (default https://api.meta.ai/v1, OpenAI-compatible)
+  GYM_LLM_API_KEY    overrides MODEL_API_KEY
+  GYM_LLM_MODEL      model id (default muse-spark-1.3-contributor)
+  GYM_LLM_REASONING_EFFORT  reasoning effort for Meta reasoning models (default high)
+  GYM_LLM_MAX_TOKENS  max completion tokens per agent step (default 4096)
+  GYM_LLM_TEMPERATURE  sampling temperature (unset by default; reasoning models may reject it)
   GYM_LLM_PORT       port for \`gym serve\` (default 8080)
   GYM_MAX_STEPS      agent action budget (default 24)
   GYM_MODEL          path to the .gguf model

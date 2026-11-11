@@ -18,11 +18,20 @@ export const paths = {
 export const MODEL_URL =
   "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
 
+/** Meta Model API: OpenAI-compatible Chat Completions. https://dev.meta.ai/docs */
+export const META_MODEL_API_BASE = "https://api.meta.ai/v1";
+export const META_CONTRIBUTOR_MODEL = "muse-spark-1.3-contributor";
+
 export function llmConfig() {
+  const temperature = process.env.GYM_LLM_TEMPERATURE;
   return {
-    baseUrl: process.env.GYM_LLM_BASE_URL ?? "http://127.0.0.1:8080/v1",
-    apiKey: process.env.GYM_LLM_API_KEY ?? "local",
-    model: process.env.GYM_LLM_MODEL ?? "local",
+    baseUrl: process.env.GYM_LLM_BASE_URL ?? META_MODEL_API_BASE,
+    // Meta Model API native key name first, generic override second
+    apiKey: process.env.GYM_LLM_API_KEY ?? process.env.MODEL_API_KEY ?? "",
+    model: process.env.GYM_LLM_MODEL ?? META_CONTRIBUTOR_MODEL,
+    reasoningEffort: process.env.GYM_LLM_REASONING_EFFORT ?? "high",
+    maxTokens: Number(process.env.GYM_LLM_MAX_TOKENS ?? 4096),
+    temperature: temperature !== undefined && temperature !== "" ? Number(temperature) : undefined,
   };
 }
 
