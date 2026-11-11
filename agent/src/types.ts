@@ -22,6 +22,8 @@ export type Step = {
   input: string;
   observation: string;
   ok: boolean;
+  /** Wall-clock time the tool took, in milliseconds. */
+  durationMs: number;
 };
 
 export type Trajectory = {
@@ -60,5 +62,10 @@ export type AgentOptions = {
   goal: string;
   maxSteps?: number;
   maxObservationChars?: number;
+  /** Called when an action starts executing (before the tool runs). */
+  onStepStart?: (step: Pick<Step, "index" | "action" | "input">) => void;
+  /** Called when the model's reply had no parseable action and the loop nudged it. */
+  onParseRetry?: (consecutiveFailures: number) => void;
+  /** Called when an action completed. */
   onStep?: (step: Step) => void;
 };

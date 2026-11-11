@@ -53,6 +53,7 @@ export class Agent {
       const parsed = parseAction(text);
       if (!parsed) {
         parseFailures++;
+        this.opts.onParseRetry?.(parseFailures);
         this.messages.push({ role: "assistant", content: text });
         this.messages.push({
           role: "user",
@@ -73,6 +74,9 @@ export class Agent {
       }
 
       const tool = this.opts.tools.find((t) => t.name === parsed.action);
+      const started = Date.now();
+      this.opts.onStepStart?.({ index: i, action: parsed.action, input: parsed.input });
+
       let result;
       if (!tool) {
         result = {
@@ -95,6 +99,7 @@ export class Agent {
         input: parsed.input,
         observation: result.output,
         ok: result.ok,
+        durationMs: Date.now() - started,
       };
       trajectory.steps.push(step);
       this.opts.onStep?.(step);

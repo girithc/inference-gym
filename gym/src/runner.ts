@@ -1,7 +1,7 @@
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { Agent, OpenAICompatLLM, makeToolkit } from "@gym/agent";
-import type { Step, Tool } from "@gym/agent";
+import type { Tool } from "@gym/agent";
 import { exec } from "@gym/agent/exec";
 import { llmConfig, paths, defaultMaxSteps } from "./config.ts";
 import { evaluate } from "./eval.ts";
@@ -99,6 +99,19 @@ export type RunSummary = {
 };
 
 /** Run the agent loop inside an instance, then verify and record the final state. */
+export /** Collapse a model thought to one clean line: drop repeated THOUGHT: markers, squash whitespace. */
+function cleanThought(s: string): string {
+  return s
+    .replace(/\bTHOUGHT:\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fmtDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s >= 60 ? `${Math.floor(s / 60)}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
+}
+
 export async function runInstance(name: string, opts: { maxSteps?: number } = {}): Promise<RunSummary> {
   const inst = await loadInstance(name);
   await assertLlmReachable();
@@ -117,14 +130,25 @@ export async function runInstance(name: string, opts: { maxSteps?: number } = {}
     system: buildSystemPrompt(inst),
     goal: inst.task.brief,
     maxSteps,
-    onStep: (s: Step) => {
-      const head = s.thought ? s.thought.split("\n")[0]!.slice(0, 100) : "";
-      console.log(`[agent ${s.index}] ${s.action}${s.input ? ` ${s.input.split("\n")[0]!.slice(0, 80)}` : ""} -> ${s.ok ? "ok" : "FAILED"}${head ? `\n         ${head}` : ""}`);
+    onStepStart: (s) => {
+      const inputHead = cleanThought(s.input).slice(0, 70);
+      console.log(`\nstep ${s.index} ▶ ${s.action}${inputHead ? ` ${inputHead}` : ""}`);
+      if (s.action === "eval") {
+        console.log("    (rebuild + inference test + benchmark — takes a few minutes)");
+      }
+    },
+    onParseRetry: (failures) => {
+      console.log(`   ↺ reply had no parseable action — nudging the model (${failures}/3)`);
+    },
+    onStep: (s) => {
+      console.log(`   ${s.ok ? "ok" : "FAILED"} · ${fmtDuration(s.durationMs)}`);
+      const thought = cleanThought(s.thought);
+      if (thought) console.log(`   thought: ${thought.slice(0, 110)}`);
       fsp.appendFile(trajPath, JSON.stringify(s) + "\n").catch(() => {});
     },
   });
 
-  console.log(`[gym] running agent on '${inst.name}' (max ${maxSteps} steps, model ${llm.model}) ...`);
+  console.log(`[gym] running agent on '${inst.name}' (max ${maxSteps} steps, model ${llm.model})`);
   const traj = await agent.run();
   console.log(`[gym] agent finished: ${traj.summary}`);
 
