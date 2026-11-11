@@ -26,8 +26,8 @@ export function llmConfig() {
   const temperature = process.env.GYM_LLM_TEMPERATURE;
   return {
     baseUrl: process.env.GYM_LLM_BASE_URL ?? META_MODEL_API_BASE,
-    // Meta Model API native key name first, generic override second
-    apiKey: process.env.GYM_LLM_API_KEY ?? process.env.MODEL_API_KEY ?? "",
+    // Meta Model API key: GYM_LLM_API_KEY overrides .env names (MODEL_API_KEY per docs, META_API_KEY accepted)
+    apiKey: process.env.GYM_LLM_API_KEY ?? process.env.MODEL_API_KEY ?? process.env.META_API_KEY ?? "",
     model: process.env.GYM_LLM_MODEL ?? META_CONTRIBUTOR_MODEL,
     reasoningEffort: process.env.GYM_LLM_REASONING_EFFORT ?? "high",
     maxTokens: Number(process.env.GYM_LLM_MAX_TOKENS ?? 4096),

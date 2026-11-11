@@ -3,3 +3,4 @@ cache/
 instances/
 *.log
 .DS_Store
+.env
